@@ -1,0 +1,28 @@
+<html>
+<head>
+<script type="text/javascript" charset="utf-8" src="map.js"></script>
+<script type="text/javascript" charset="utf-8" src="http://www.openlayers.org/api/OpenLayers.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?sensor=false"></script>
+<script type="text/javascript" charset="utf-8">
+  function Example() {
+    address = ['111 W. Maddision, Chicago, IL'];
+    Map(address, "mapdiv");
+    var element = document.getElementById("submit");
+    element.onmousedown = update;
+  }
+  function update() { 
+      var element = document.getElementById("submit");
+      var address = document.getElementById("address_text").value;
+      Map(address, "mapdiv");
+    };
+</script>
+</head>
+  <body onload="Example()">
+  <h1>Geo Location</h1>
+  <input id="address_text" type="text" value="Chicago, IL">
+  <input id="submit" type="submit" value="Map">
+  <h4>Open Street Maps / Google Maps - (XML/JSON)</h4>
+    <div id="mapdiv">
+    </div>
+  </body>
+</html>
