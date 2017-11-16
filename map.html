@@ -6,14 +6,14 @@
 <script type="text/javascript" charset="utf-8">
   function Example() {
     address = ['111 W. Maddision, Chicago, IL'];
-    Map(address, "mapdiv");
+    Mapper(address, "mapdiv");
     var element = document.getElementById("submit");
     element.onmousedown = update;
   }
   function update() { 
       var element = document.getElementById("submit");
       var address = document.getElementById("address_text").value;
-      Map(address, "mapdiv");
+      Mapper(address, "mapdiv");
     };
 </script>
 </head>

@@ -23,7 +23,7 @@ Map(["Chicago, IL", "San Jose, CA"], "myDivId");
   Returns a map to the myDivId with two markers
 
 */
-function Map(address, id){
+function Mapper(address, id){
 
   var checked = FormatAddress(address);
   
