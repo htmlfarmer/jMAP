@@ -23,7 +23,7 @@ Map(["Chicago, IL", "San Jose, CA"], "myDivId");
   Returns a map to the myDivId with two markers
 
 */
-function Map(address, id){
+function Mapper(address, id){
 
   var checked = FormatAddress(address);
   
@@ -55,44 +55,33 @@ Locate(["Chicago, IL", "San Jose, CA"], callback);
 
 */
 function Locate(address, callback) { 
-
+  var geocoder = new google.maps.Geocoder();
   var checked = FormatAddress(address);
   
   var addresses = checked.locations; // the address string copied from the input address
   var type = checked.type; // json or xml request type (json is slightly faster for both google and open)
   var provider = checked.provider; // "google" or "open" for open street maps (xml/json geo (lat/lon) code request) 
 
-  // index through all the addresses and put them into an array of request uri's
-  var uri = "request.php"; // please dont change this... the uri used to do a remote geocode lookup   
-  var uris = [];  
-  for(var index = 0; index < addresses.length; index++){
-    if(provider == "google") {
-      uris.push(uri+"?uri="+GoogleURI(addresses[index], type)+"");
-    } 
-    else { // open street maps is the default ;O)
-      uris.push(uri+"?uri="+OpenURI(addresses[index], type)+"");
-    }
-  }
   // make all the requests for the geo locations (lat/lon)
   // keep these 3 here for closure reasons... 
   var locations = []; 
   var center = {lat : 0, lon : 0};
-  
-  for (var u = 0; u < uris.length; u++) {
-    Request(uris[u], function(reply){
+
+  for(var index = 0; index < addresses.length; index++){
+    geocoder.geocode({address: addresses[index]}, function(reply, status){
       var location = {};
-      location = Parser(reply.response, provider, type);
+      location = Parser(reply);
       locations.push(location);
       center.lat += location.lat;
       center.lon += location.lon;
-      if(locations.length == uris.length) {
-        center.lat = center.lat/uris.length;
-        center.lon = center.lon/uris.length;
+      if(locations.length == addresses.length) {
+        center.lat = center.lat/addresses.length;
+        center.lon = center.lon/addresses.length;
         locations.center = center; // the center is the geometric mean = Math.pow(n1 * n2 * n3..., 1/count);
         callback(locations);
       }
     });
-  }   
+  }
 }
 
 function FormatAddress(address) {
@@ -145,128 +134,17 @@ Parser(ajax reply, google/open, json/xml);
    takes the reply from google maps or open street maps and creates an object with location[lat/lon] 
 */
 
-function Parser(text, provider, type) {
+function Parser(reply) {
   var location = {};
-  var geo = {};
-  switch(type) {
-    case "xml":
-      geo = XML.parse(text); // TODO: these need to be rewritten to parse only the field needed
-    break;
-    case "json":
-      geo = JSON.parse(text); // TODO: these need to be rewritten to parse only the field needed
-    break;
-    default:// case "text":
-      geo = text;
-  }
-  var reply = geo;  
+
   if(reply != null) {
-    if(provider == "google") { // Google Street Maps
-      switch(type) {
-        case "xml":
-          location["lat"] = reply.getElementsByTagName("lat")[0] ? reply.getElementsByTagName("lat")[0].textContent : null;
-          location["lon"] = reply.getElementsByTagName("lng")[0] ? reply.getElementsByTagName("lng")[0].textContent : null; 
-        break;
-        default: // json
-          location["lat"] = reply.results[0] ? reply.results[0].geometry.location.lat : null;
-          location["lon"] = reply.results[0] ? reply.results[0].geometry.location.lng : null;
-      }
-    }
-    else { // Open Street Maps
-      switch(type) { // TODO BUG CHECK
-        case "xml":
-          location["lat"] = reply.getElementsByTagName("place")[0] ? reply.getElementsByTagName("place")[0].getAttribute("lat") : null; 
-          location["lon"] = reply.getElementsByTagName("place")[0] ? reply.getElementsByTagName("place")[0].getAttribute("lon") : null;
-        break;
-        default: // json / TODO / BUG / CHECK?
-          location["lat"] = reply[0] ? reply[0].lat : null;
-          location["lon"] = reply[0] ? reply[0].lon : null;
-      }
-    }
+    location["lat"] = reply[0] ? reply[0].geometry.location.lat() : null;
+    location["lon"] = reply[0] ? reply[0].geometry.location.lng() : null;
   }
   location.lat = parseFloat(location.lat);
   location.lon = parseFloat(location.lon);
+
   return location;
-}
-
-// URL ENCODINGS: http://www.w3schools.com/tags/ref_urlencode.asp
-// +   %2B 
-// , 	%2C
-// & 	%26
-// space %20 
-// this version only replaces spaces with %20 because the php request does the rest
-
-function FormatURI(name) {
-  if(typeof name == "string") {
-    return name.replace(/ /g, "%20");
-  } 
-  else { // check the address carefully... this might not always work... 
-    return name.address.replace(/ /g, "%20");
-  }
-}
-
-// GOOGLE MAPS API v3
-// API: https://developers.google.com/maps/documentation/geocoding/#GeocodingRequests
-// Example JSON request: http://maps.googleapis.com/maps/api/geocode/json?address=1111%W.%2035rd%20street,%20Chicago,%20IL&sensor=true
-//   JSON requests takes about 70 ms each
-//   XML requests take about 80 ms each
-
-function GoogleURI(address, type){
-  var uri = "http://maps.googleapis.com/maps/api/geocode/";
-  address = FormatURI(address);
-  if(type == "xml"){
-    uri = uri + type + "?" + "address=" + address + "%26sensor=false";
-  } else { // default to json
-    uri = uri + "json" + "?" + "address=" + address + "%26sensor=false";
-  }
-  return uri; 
-}
-
-// OPEN STREET MAP API 0.6
-// API: http://wiki.openstreetmap.org/wiki/Nominatim#Example
-// Example XML Request: http://nominatim.openstreetmap.org/search?q=%201111%20W.%2035th%20Street,%20Chicago&format=xml&addressdetails=1
-// NOTE &'s and spaces dont pass easily to php and then to nominatim.openstreetmap.org
-// WARNING: OPEN STREET MAPS SOMETIMES DOESNT NEED THE STATE AND ZIP CODE and in fact will error out... ;)
-// JSON requests take about 359 ms (depends on traceroute!)
-// XML requests takea about 375 ms (depends on traceroute!)
-
-function OpenURI(address, type){
-  var uri = "http://nominatim.openstreetmap.org/search?q=";
-  var format = "%26format=" + type; 
-  var details = "%26addressdetails=1";
-  address = FormatURI(address);
-  // NOTE: &'s dont pass good to php file_get_contents($uri) dont use "&polygon=1&addressdetails=1";
-  if(type == "xml"){
-    uri = uri + address + "%26format=" + type + "%26addressdetails=1";
-  } else { // default to json
-    uri = uri + address + "%26format=" + "json" + "%26addressdetails=1";
-  } 
-  return uri; 
-}
-
-// Request(request.php, callback handler, data for post requests isn't used yet)
-// really doesn't return anything and needs a callback function handler
-
-function Request(uri, callback, data) { //data = null; // right now we dont support post requests.. :(
-  var xmlhttp;
-  if (window.XMLHttpRequest) {// code for IE7+, Firefox, Chrome, Opera, Safari
-    xmlhttp = new XMLHttpRequest();
-    }
-  else {// code for IE6, IE5
-    xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
-    }
-    xmlhttp.onreadystatechange = function(){
-      if (xmlhttp.readyState==4 && xmlhttp.status==200) {
-          callback(xmlhttp);
-      }
-    }
-    if(data != null){
-      xmlhttp.open("POST", uri, true); 
-      xmlhttp.send(data);
-    }
-    else {
-      xmlhttp.open("GET", uri, true); 
-      xmlhttp.send();
-    }
 }
 
 // location.lat / location.lon 

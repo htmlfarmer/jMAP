@@ -1,19 +1,20 @@
 <html>
 <head>
+<link rel="stylesheet" type="text/css" href="map.css" />
+<script src="https://maps.googleapis.com/maps/api/js"></script>
+<script type="text/javascript" charset="utf-8" src="http://openlayers.org/api/OpenLayers.js"></script>
 <script type="text/javascript" charset="utf-8" src="map.js"></script>
-<script type="text/javascript" charset="utf-8" src="http://www.openlayers.org/api/OpenLayers.js"></script>
-<script src="https://maps.googleapis.com/maps/api/js?sensor=false"></script>
 <script type="text/javascript" charset="utf-8">
   function Example() {
     address = ['111 W. Maddision, Chicago, IL'];
-    Map(address, "mapdiv");
+    Mapper(address, "mapdiv");
     var element = document.getElementById("submit");
     element.onmousedown = update;
   }
   function update() { 
       var element = document.getElementById("submit");
       var address = document.getElementById("address_text").value;
-      Map(address, "mapdiv");
+      Mapper(address, "mapdiv");
     };
 </script>
 </head>
