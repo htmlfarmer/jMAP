@@ -143,7 +143,7 @@ function Parser(reply) {
   }
   location.lat = parseFloat(location.lat);
   location.lon = parseFloat(location.lon);
-  console.log(location)
+
   return location;
 }
 
