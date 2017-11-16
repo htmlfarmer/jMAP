@@ -55,44 +55,33 @@ Locate(["Chicago, IL", "San Jose, CA"], callback);
 
 */
 function Locate(address, callback) { 
-
+  var geocoder = new google.maps.Geocoder();
   var checked = FormatAddress(address);
   
   var addresses = checked.locations; // the address string copied from the input address
   var type = checked.type; // json or xml request type (json is slightly faster for both google and open)
   var provider = checked.provider; // "google" or "open" for open street maps (xml/json geo (lat/lon) code request) 
 
-  // index through all the addresses and put them into an array of request uri's
-  var uri = "request.php"; // please dont change this... the uri used to do a remote geocode lookup   
-  var uris = [];  
-  for(var index = 0; index < addresses.length; index++){
-    if(provider == "google") {
-      uris.push(uri+"?uri="+GoogleURI(addresses[index], type)+"");
-    } 
-    else { // open street maps is the default ;O)
-      uris.push(uri+"?uri="+OpenURI(addresses[index], type)+"");
-    }
-  }
   // make all the requests for the geo locations (lat/lon)
   // keep these 3 here for closure reasons... 
   var locations = []; 
   var center = {lat : 0, lon : 0};
-  
-  for (var u = 0; u < uris.length; u++) {
-    Request(uris[u], function(reply){
+
+  for(var index = 0; index < addresses.length; index++){
+    geocoder.geocode({address: addresses[index]}, function(reply, status){
       var location = {};
-      location = Parser(reply.response, provider, type);
+      location = Parser(reply);
       locations.push(location);
       center.lat += location.lat;
       center.lon += location.lon;
-      if(locations.length == uris.length) {
-        center.lat = center.lat/uris.length;
-        center.lon = center.lon/uris.length;
+      if(locations.length == addresses.length) {
+        center.lat = center.lat/addresses.length;
+        center.lon = center.lon/addresses.length;
         locations.center = center; // the center is the geometric mean = Math.pow(n1 * n2 * n3..., 1/count);
         callback(locations);
       }
     });
-  }   
+  }
 }
 
 function FormatAddress(address) {
@@ -145,46 +134,16 @@ Parser(ajax reply, google/open, json/xml);
    takes the reply from google maps or open street maps and creates an object with location[lat/lon] 
 */
 
-function Parser(text, provider, type) {
+function Parser(reply) {
   var location = {};
-  var geo = {};
-  switch(type) {
-    case "xml":
-      geo = XML.parse(text); // TODO: these need to be rewritten to parse only the field needed
-    break;
-    case "json":
-      geo = JSON.parse(text); // TODO: these need to be rewritten to parse only the field needed
-    break;
-    default:// case "text":
-      geo = text;
-  }
-  var reply = geo;  
+
   if(reply != null) {
-    if(provider == "google") { // Google Street Maps
-      switch(type) {
-        case "xml":
-          location["lat"] = reply.getElementsByTagName("lat")[0] ? reply.getElementsByTagName("lat")[0].textContent : null;
-          location["lon"] = reply.getElementsByTagName("lng")[0] ? reply.getElementsByTagName("lng")[0].textContent : null; 
-        break;
-        default: // json
-          location["lat"] = reply.results[0] ? reply.results[0].geometry.location.lat : null;
-          location["lon"] = reply.results[0] ? reply.results[0].geometry.location.lng : null;
-      }
-    }
-    else { // Open Street Maps
-      switch(type) { // TODO BUG CHECK
-        case "xml":
-          location["lat"] = reply.getElementsByTagName("place")[0] ? reply.getElementsByTagName("place")[0].getAttribute("lat") : null; 
-          location["lon"] = reply.getElementsByTagName("place")[0] ? reply.getElementsByTagName("place")[0].getAttribute("lon") : null;
-        break;
-        default: // json / TODO / BUG / CHECK?
-          location["lat"] = reply[0] ? reply[0].lat : null;
-          location["lon"] = reply[0] ? reply[0].lon : null;
-      }
-    }
+    location["lat"] = reply[0] ? reply[0].geometry.location.lat() : null;
+    location["lon"] = reply[0] ? reply[0].geometry.location.lng() : null;
   }
   location.lat = parseFloat(location.lat);
   location.lon = parseFloat(location.lon);
+  console.log(location)
   return location;
 }
 
